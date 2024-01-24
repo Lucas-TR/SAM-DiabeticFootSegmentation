@@ -36,7 +36,7 @@ def index():
 
 @app.route("/detect_lesion", methods=['POST'])
 def detect_lesion():
-    ruta_carpeta = 'predicts_RGB_VGG_VERRRR'
+    ruta_carpeta = 'predicts_RGB_VGG_VER'
     tool.create_new_file(ruta_carpeta)
     tool.create_new_file('crops')
     tool.create_new_file('{}/{}'.format(ruta_carpeta, 'overlay'))
@@ -104,12 +104,18 @@ def detect_lesion():
         if (method == 1 or method == 2 or method == 3):
             input_point_all, input_label_all = tool_SVM.prediction_SVM_predict('.', ruta_carpeta, 'generate_images_sr_img', n_segment, compactness, sigma, threshold , layer, [uploaded_file.filename], method, predictor, uploaded_file.filename)
         
+        
+
+        #actualizacion de coordenadas
         for coord in input_point_all:
             coord[0] = x1 + coord[0]*fw
             coord[1] = y1 + coord[1]*fh
 
         mask_pred = tool.segment_image(img, input_point_all, input_label_all, bbox, predictor)
         masks_pred.append(mask_pred)
+
+        img_view_2 = tool.show_points_on_image(img.copy(), input_point_all, input_label_all, complete = True)
+        img_bbox = tool.draw_bbox(img_view_2.copy(), bbox, color=(255, 0, 0))
 
     if masks_pred:
         mask_predict_final = tool.unir_mascaras(masks_pred)
@@ -118,7 +124,10 @@ def detect_lesion():
         mask_predict_final = cv2.cvtColor(mask_predict_final_gray, cv2.COLOR_GRAY2RGB)
         img_overlay = tool.overlay_mask(img, mask_predict_final_gray)
         cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'overlay', uploaded_file.filename), img_overlay)
-    
+        cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'marcas_images', uploaded_file.filename), mask_predict_final_gray)
+        cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'images_bbox', uploaded_file.filename),  img_bbox)
+
+        
     # Mover imágenes procesadas al directorio 'static'
     destination_folder = os.path.join('static', 'detect_results')
     for filename in os.listdir(destination_folder):
