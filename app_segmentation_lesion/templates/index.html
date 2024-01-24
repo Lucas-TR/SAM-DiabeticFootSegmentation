@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detección de Lesiones</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #spinner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+        }
+
+        #spinner div {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+        }
+
+        #detection-section {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">Project Lesions</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+                <a class="nav-link" href="#" id="demo-button">Demo</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">Dataset</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">Paper</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="https://github.com/your_repo_link_here"><img src="path_to_github_logo.png" alt="GitHub Logo" width="30"></a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container my-5" id="detection-section">
+    <h1 class="text-center">Detección de Lesiones</h1>
+
+    <form enctype="multipart/form-data" action="/detect_lesion" method="post" id="upload-form" class="mt-5">
+        <div class="form-group">
+            <input type="file" name="file" required class="form-control-file">
+        </div>
+        <button type="submit" class="btn btn-primary">Detectar</button>
+    </form>
+
+    <div class="row mt-5">
+        <div class="col-md-6 text-center">
+            <h3>Imagen Seleccionada</h3>
+            <img id="imagePreview" class="img-fluid" alt="Vista previa de la imagen seleccionada" style="display: none;">
+        </div>
+
+        <div class="col-md-6 text-center">
+            <h3>Resultado de la Detección</h3>
+            <img id="detectedImage" class="img-fluid" alt="Imagen de detección" style="display: none;">
+            <br>
+            <a id="downloadLink" href="#" download class="btn btn-success mt-3">Descargar Predicción</a>
+            <div id="spinner" class="mt-3">
+                <div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+    document.getElementById('demo-button').addEventListener('click', function() {
+        document.getElementById('detection-section').style.display = 'block';
+    });
+</script>
+</body>
+</html>
+

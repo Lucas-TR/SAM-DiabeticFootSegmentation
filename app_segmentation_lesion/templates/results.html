@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados de Detección</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="container my-5">
+    <h1 class="text-center mb-5">Resultados de Detección</h1>
+
+    <div class="row">
+        {% for image in images %}
+        <div class="col-md-4 mb-4">
+            <img src="{{ url_for('static', filename=image) }}" alt="Imagen de detección" class="img-fluid">
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+</body>
+</html>
