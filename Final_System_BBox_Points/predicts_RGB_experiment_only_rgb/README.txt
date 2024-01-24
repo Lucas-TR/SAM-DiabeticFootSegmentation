@@ -1,0 +1,1 @@
+IoU promedio : 0.759
