@@ -1,0 +1,107 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-color: white; /* Ensures that the background is white */
+}
+
+.grid-container {
+  display: grid;
+  grid-template-areas:
+    "header header header"
+    "left-margin main right-margin"
+    "footer footer footer";
+  grid-template-columns: 1fr 6fr 1fr; /* Three columns with the middle column auto-sized to content */
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+.header {
+  grid-area: header;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #333;
+  padding: 10px 20px;
+}
+
+.title {
+  font-size: 24px;
+  color: white;
+}
+
+.navbar {
+  display: flex;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  margin-left: 16px;
+  font-size: 17px;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+.main-content {
+  grid-area: main;
+  background-color: #aad3e2;
+  padding: 20px; /* Padding inside the main content */
+}
+
+.footer {
+  grid-area: footer;
+  background-color: #d1c1d7;
+  padding: 10px;
+  text-align: center;
+}
+
+.main-content {
+  grid-area: main;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr; /* The third column is three times as wide as the others */
+  grid-template-rows: 0.7fr 0.5fr 3fr 0.5fr;; /* You can set specific sizes if you want */
+  gap: 10px; /* Adjust the gap to your preference */
+  padding: 20px; /* Padding inside the main content */
+  background-color: #aad3e2;
+}
+
+.main-row1 {
+  grid-column: 1 / -1; /* Spans all columns in the first row */
+  background-color: #f2a69b; /* Color for visualization */
+}
+
+.main-row2-left {
+  grid-column: 1 / span 2; /* Spans the first two of the four columns in the second row */
+  background-color: #f3eaa7; /* Color for visualization */
+}
+
+.main-row2-right {
+  grid-column: 3 / span 2; /* Spans the last two of the four columns in the second row */
+  background-color: #a7f3d0; /* Color for visualization */
+}
+
+.main-row3 {
+  grid-column: 1 / -1; /* Spans all columns in the third row */
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Creates a nested 4x1 grid */
+  gap: 10px;
+}
+
+.main-row3 .sub-item {
+  background-color: #d1c1d7; /* Color for visualization */
+  /* Each .sub-item will automatically take up one fraction of the space,
+     except the third one which will be defined to take up three fractions */
+}
+
+.main-row3 .sub-item:nth-child(3) {
+  grid-column: 3;
+  background-color: #d1f7c1; /* Different color for the wider column */
+}
+
+.main-row4 {
+  grid-column: 1 / -1; /* Spans all columns in the fourth row */
+  background-color: #b2a1c7; /* Color for visualization */
+}

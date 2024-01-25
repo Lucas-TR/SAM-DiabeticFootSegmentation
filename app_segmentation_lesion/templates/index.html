@@ -1,71 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Lesions</title>
+    <title>SAM-DiabeticFootSegmentation</title>
+    <link href="{{ url_for('static', filename='css/styles_2.css') }}" rel="stylesheet">
+    <!-- Bootstrap CSS -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link href="path_to_your_css_folder/styles.css" rel="stylesheet">
+    <!-- Boxicons for icons -->
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.0.7/css/boxicons.min.css" rel="stylesheet">
-
 </head>
-
 <body>
-
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="#">Project Lesions</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ml-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="#" id="demo-button">Demo</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Dataset</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Paper</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="https://github.com/Lucas-TR/SAM-DiabeticFootSegmentation">
-                        <i class='bx bxl-github github-icon'></i>
-                    </a>
-                </li>
-            </ul>
+<div class="grid-container">
+    <!-- Header -->
+    <header class="header">
+        <div class="title">Project Lesions</div>
+        <!-- Bootstrap navbar for responsive design -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="demo-button">Demo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Dataset</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Paper</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://github.com/Lucas-TR/SAM-DiabeticFootSegmentation">
+                            <i class='bx bxl-github github-icon'></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+    
+    <!-- Main content -->
+    <main class="main-content" id="detection-section">
+        <div class="main-row1">SAM-DiabeticFootSegmentation</div>
+        <div class="main-row2-left" id="upload-form-container">
+            <!-- Formulario para cargar la imagen a segmentar -->
+            <form enctype="multipart/form-data" action="/detect_lesion" method="post" id="upload-form">
+                <input type="file" name="file" required class="form-control-file">
+                <button type="submit" class="btn btn-primary">Segment</button>
+            </form>
         </div>
-    </nav>
-
-<div class="container my-5" id="detection-section">
-    <h1 class="text-center">SAM-DiabeticFootSegmentation</h1>
-
-    <form enctype="multipart/form-data" action="/detect_lesion" method="post" id="upload-form" class="mt-5">
-        <div class="form-group">
-            <input type="file" name="file" required class="form-control-file">
-        </div>
-        <button type="submit" class="btn btn-primary">Segment</button>
-    </form>
-
-    <div class="row mt-5">
-        <div class="col-md-6 text-center">
-            <h3>Image</h3>
-            <img id="imagePreview" class="img-fluid" alt="Vista previa de la imagen seleccionada" style="display: none;">
-        </div>
-
-        <div class="col-md-6 text-center">
-            <h3>Segmentation</h3>
-            <img id="detectedImage" class="img-fluid" alt="Imagen de detección" style="display: none;">
-            <br>
-            <a id="downloadLink" href="#" download class="btn btn-success mt-3">Download</a>
-            <div id="spinner" class="mt-3">
-                <div></div>
+        <div class="main-row3" id="images-container">
+            <!-- Contenedores para las imágenes con los IDs correspondientes -->
+            <div class="sub-item" id="image-container">
+                <h3>Image</h3>
+                <img id="imagePreview" class="img-fluid" alt="Vista previa de la imagen seleccionada" style="display: none;">
+            </div>
+            <div class="sub-item" id="points-container">
+                <h3>BBox + Points</h3>
+                <img id="pointsImage" class="img-fluid" alt="Imagen con puntos" style="display: none;">
+            </div>
+            <div class="sub-item" id="mask-container">
+                <h3>Segmentation</h3>
+                <img id="maskImage" class="img-fluid" alt="Imagen de máscara" style="display: none;">
+            </div>
+            <div class="sub-item" id="overlay-container">
+                <h3>Overlay</h3>
+                <img id="overlayImage" class="img-fluid" alt="Imagen de detección" style="display: none;">
             </div>
         </div>
-    </div>
+        <div class="main-row4" id="download-container">
+            <a href="#" download class="btn btn-success" id="downloadLink">Download</a>
+        </div>
+        <div id="spinner" class="mt-3">
+            <div></div>
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            &copy; 2024 SAM-DiabeticFootSegmentation. Todos los derechos reservados. Hecho por Lucas Taipe.
+        </div>
+    </footer>
 </div>
 
+<!-- Bootstrap JS, Popper.js, and jQuery -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
     document.getElementById('demo-button').addEventListener('click', function() {
@@ -73,5 +94,3 @@
     });
 </script>
 </body>
-</html>
-

@@ -65,7 +65,7 @@ def detect_lesion():
 
     # Procesamiento de la imagen con el nuevo código
     method = 1  # 1: RGB, 2: VGG, 3: RGB and VGG, 4: unet
-    confiabilidad = 0.20
+    confiabilidad = 0.25
     Path = os.path.join('.', 'runs/train/exp/weights/best.pt')
     
     
@@ -76,6 +76,12 @@ def detect_lesion():
     h, w, _ = img.shape
     masks_pred = []
     
+
+    # Inicializar img_view_2 y img_bbox antes del bucle
+    img_view_2 = img.copy()
+    img_bbox = img.copy()
+
+
     for bbox in bboxes:
         bbox = bbox[0]
         bbox = np.asarray(bbox, dtype=np.int32)
@@ -87,14 +93,20 @@ def detect_lesion():
         # Realizar recorte
         recorte = img[y1:y2, x1:x2, :]
         h_crop, w_crop, _ = recorte.shape
-        cv2.imwrite('crops/crop.jpg', recorte)
-        gen_EDSR.SR_EDSR('.', 'crops')
 
-        recorte_sr = cv2.imread('generate_images_sr_img/crop.jpg')
-        h_crop_sr, w_crop_sr, _ = recorte_sr.shape
-        fh = h_crop / h_crop_sr
-        fw = w_crop/ w_crop_sr
-        
+        # Aplicar EDSR solo si el recorte es menor de 512x512
+        if h_crop < 512 and w_crop < 512:
+            cv2.imwrite('crops/crop.jpg', recorte)
+            gen_EDSR.SR_EDSR('.', 'crops')
+            recorte_sr = cv2.imread('generate_images_sr_img/crop.jpg')
+            h_crop_sr, w_crop_sr, _ = recorte_sr.shape
+            fh = h_crop / h_crop_sr
+            fw = w_crop / w_crop_sr
+        else:
+            recorte_sr = recorte
+            fh = 1
+            fw = 1
+
         n_segment = 100
         compactness = 10
         sigma = 1 
@@ -114,8 +126,9 @@ def detect_lesion():
         mask_pred = tool.segment_image(img, input_point_all, input_label_all, bbox, predictor)
         masks_pred.append(mask_pred)
 
-        img_view_2 = tool.show_points_on_image(img.copy(), input_point_all, input_label_all, complete = True)
-        img_bbox = tool.draw_bbox(img_view_2.copy(), bbox, color=(255, 0, 0))
+        # Actualizar img_view_2 y img_bbox dentro del bucle
+        img_view_2 = tool.show_points_on_image(img_view_2, input_point_all, input_label_all, complete=True)
+        img_bbox = tool.draw_bbox(img_view_2, bbox, color=(255, 0, 0))
 
     if masks_pred:
         mask_predict_final = tool.unir_mascaras(masks_pred)
@@ -124,8 +137,8 @@ def detect_lesion():
         mask_predict_final = cv2.cvtColor(mask_predict_final_gray, cv2.COLOR_GRAY2RGB)
         img_overlay = tool.overlay_mask(img, mask_predict_final_gray)
         cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'overlay', uploaded_file.filename), img_overlay)
-        cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'marcas_images', uploaded_file.filename), mask_predict_final_gray)
-        cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'images_bbox', uploaded_file.filename),  img_bbox)
+        cv2.imwrite('{}/{}/mask.jpg'.format(ruta_carpeta, 'marcas_images'), mask_predict_final_gray)
+        cv2.imwrite('{}/{}/bbox_points.jpg'.format(ruta_carpeta, 'images_bbox'),  img_bbox)
 
         
     # Mover imágenes procesadas al directorio 'static'
@@ -138,16 +151,35 @@ def detect_lesion():
             shutil.rmtree(file_path)
     
     shutil.move('{}/{}/{}'.format(ruta_carpeta, 'overlay', uploaded_file.filename), destination_folder)
+    shutil.move('{}/{}/{}'.format(ruta_carpeta, 'marcas_images','mask.jpg'), destination_folder)
+    shutil.move('{}/{}/{}'.format(ruta_carpeta, 'images_bbox', 'bbox_points.jpg'), destination_folder)
+
     image_path = os.path.join('detect_results', uploaded_file.filename)
-    return jsonify({"image_path": image_path})
+    
+    return jsonify({
+            "overlay_path": os.path.join('detect_results', uploaded_file.filename),
+            "mask_path": os.path.join('detect_results', 'mask.jpg'),
+            "bbox_path": os.path.join('detect_results', 'bbox_points.jpg')
+        })
 
 @app.route("/check_results")
 def check_results():
     destination_folder = os.path.join('static', 'detect_results')
     image_files = os.listdir(destination_folder)
+    print('holi a')
+    print(image_files)
+    
     if image_files:
-        image_path = os.path.join('detect_results', image_files[0])
-        return jsonify({"has_images": True, "image_path": image_path})
+        overlay_path = os.path.join('detect_results', image_files[0])
+        mask_path = os.path.join('detect_results', 'mask.jpg')
+        bbox_path = os.path.join('detect_results', 'bbox_points.jpg')
+        
+        return jsonify({
+            "has_images": True,
+            "overlay_path": overlay_path,
+            "mask_path": mask_path,
+            "bbox_path": bbox_path
+        })
     else:
         return jsonify({"has_images": False})
 
