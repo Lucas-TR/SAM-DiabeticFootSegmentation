@@ -11,7 +11,7 @@ import detect
 import generate_EDSR as gen_EDSR
 import tool_SVM
 import tool
-
+import time 
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
 from tqdm import tqdm
@@ -36,6 +36,7 @@ def index():
 
 @app.route("/detect_lesion", methods=['POST'])
 def detect_lesion():
+    start_time = time.time()  # Tiempo de inicio
     ruta_carpeta = 'predicts_RGB_VGG_VER'
     tool.create_new_file(ruta_carpeta)
     tool.create_new_file('crops')
@@ -81,6 +82,7 @@ def detect_lesion():
     img_view_2 = img.copy()
     img_bbox = img.copy()
 
+    pixel_counts = []  # Lista para almacenar el recuento de píxeles por máscara
 
     for bbox in bboxes:
         bbox = bbox[0]
@@ -116,8 +118,6 @@ def detect_lesion():
         if (method == 1 or method == 2 or method == 3):
             input_point_all, input_label_all = tool_SVM.prediction_SVM_predict('.', ruta_carpeta, 'generate_images_sr_img', n_segment, compactness, sigma, threshold , layer, [uploaded_file.filename], method, predictor, uploaded_file.filename)
         
-        
-
         #actualizacion de coordenadas
         for coord in input_point_all:
             coord[0] = x1 + coord[0]*fw
@@ -126,9 +126,15 @@ def detect_lesion():
         mask_pred = tool.segment_image(img, input_point_all, input_label_all, bbox, predictor)
         masks_pred.append(mask_pred)
 
+        # Cuenta los píxeles con valor 1 y almacénalo
+        pixel_count = np.sum(mask_pred == 1)
+        pixel_counts.append(pixel_count)
+
         # Actualizar img_view_2 y img_bbox dentro del bucle
         img_view_2 = tool.show_points_on_image(img_view_2, input_point_all, input_label_all, complete=True)
-        img_bbox = tool.draw_bbox(img_view_2, bbox, color=(255, 0, 0))
+
+
+    img_bbox = tool.draw_bbox_with_numbered_labels(img_view_2, bboxes, color=(255, 0, 0))
 
     if masks_pred:
         mask_predict_final = tool.unir_mascaras(masks_pred)
@@ -154,9 +160,14 @@ def detect_lesion():
     shutil.move('{}/{}/{}'.format(ruta_carpeta, 'marcas_images','mask.jpg'), destination_folder)
     shutil.move('{}/{}/{}'.format(ruta_carpeta, 'images_bbox', 'bbox_points.jpg'), destination_folder)
 
-    image_path = os.path.join('detect_results', uploaded_file.filename)
+    pixel_counts = [int(count) for count in pixel_counts]
+    end_time = time.time()  # Tiempo de finalización
+    processing_time = end_time - start_time  # Calcula el tiempo total
+    print(f"Tiempo de procesamiento: {processing_time} segundos")
     
     return jsonify({
+            "pixel_counts": pixel_counts,
+            "processing_time": processing_time,
             "overlay_path": os.path.join('detect_results', uploaded_file.filename),
             "mask_path": os.path.join('detect_results', 'mask.jpg'),
             "bbox_path": os.path.join('detect_results', 'bbox_points.jpg')

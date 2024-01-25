@@ -820,7 +820,65 @@ def labels_visual_unet(img, mask, mask_sp):
   return mask, mask_sp, img, img_comparative
 
 
-def draw_bbox(img, bboxes, color=(255, 0, 0), thickness=2):
+
+def draw_bbox_with_numbered_labels(img, bboxes, color=(255, 0, 0), thickness=2, label_color=(255, 255, 255), label_bg_color=(255, 0, 0)):
+    """
+    Dibuja bounding boxes en la imagen con etiquetas numéricas.
+
+    Args:
+    img: Imagen en la que dibujar los bounding boxes.
+    bboxes: Lista de tuplas de bounding boxes, donde cada tupla contiene una lista de las coordenadas
+            del bounding box.
+    color: Color del bounding box en formato BGR. Por defecto es rojo.
+    thickness: Grosor de las líneas del bounding box. Por defecto es 2.
+    label_color: Color del texto de la etiqueta. Por defecto es blanco.
+    label_bg_color: Color de fondo para la etiqueta. Por defecto es rojo.
+
+    Returns:
+    img: Imagen con los bounding boxes y etiquetas numéricas dibujados.
+    """
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 2
+
+    for idx, bbox in enumerate(bboxes, start=1):
+        
+        bbox = bbox[0]
+        bbox = np.asarray(bbox, dtype=np.int32)
+        
+        
+        coordinates = bbox
+        start_point = (int(coordinates[0]), int(coordinates[1]))  # Coordenadas de la esquina superior izquierda
+        end_point = (int(coordinates[2]), int(coordinates[3]))  # Coordenadas de la esquina inferior derecha
+
+        # Dibuja el bounding box
+        img = cv2.rectangle(img, start_point, end_point, color, thickness)
+
+        # Etiqueta numérica
+        label = str(idx)
+
+        # Tamaño del texto
+        text_size = cv2.getTextSize(label, font, font_scale, font_thickness)[0]
+        text_x = start_point[0]
+        text_y = start_point[1] - 10
+
+        # Ajustes para evitar que el texto se salga de la imagen
+        if text_y < 0:
+            text_y = start_point[1] + text_size[1] + 10
+
+        # Coordenadas para el fondo del texto
+        label_bg_start = (text_x, text_y - text_size[1] - 5)
+        label_bg_end = (text_x + text_size[0] + 5, text_y + 5)
+
+        # Dibuja el fondo y el texto
+        img = cv2.rectangle(img, label_bg_start, label_bg_end, label_bg_color, cv2.FILLED)
+        img = cv2.putText(img, label, (text_x, text_y - 5), font, font_scale, label_color, font_thickness)
+
+    return img
+
+
+
+def draw_bbox_original(img, bboxes, color=(255, 0, 0), thickness=2):
     """
     Dibuja bounding boxes en la imagen.
 
@@ -987,7 +1045,7 @@ def exp_green(x1):
     x2 = math.exp(a * math.log(x1) + b)
     return x2
 
-def draw_bbox(img, coordinates, color=(255, 0, 0), thickness=2):
+def draw_bbox_each(img, coordinates, color=(255, 0, 0), thickness=2):
     """
     Dibuja bounding boxes en la imagen.
 

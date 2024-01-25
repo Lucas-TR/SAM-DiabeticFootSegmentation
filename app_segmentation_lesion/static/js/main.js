@@ -7,7 +7,7 @@ const pointsImage = document.getElementById('pointsImage'); // Agrega esta líne
 // const detectedImage = document.getElementById('detectedImage');
 const downloadLink = document.getElementById('downloadLink');
 const spinner = document.getElementById('spinner');
-
+const pixelCountsContainer = document.getElementById('pixelCountsContainer');
 
 // Ocultar el enlace de descarga al inicio
 downloadLink.style.display = "none";
@@ -61,9 +61,6 @@ function checkForImages(attempts) {
     });
 }
 
-
-
-
 // Funcionalidad para enviar la imagen para detección
 form.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -77,15 +74,66 @@ form.addEventListener('submit', function(e) {
         method: 'POST',
         body: formData
     })
-    .then(() => {
-        // Iniciar la verificación de imágenes
-        checkForImages(0);
+    .then(response => response.json()) // Procesar la respuesta en formato JSON
+    .then(data => {
+        // Ocultar el spinner
+        spinner.style.display = 'none';
+
+        // Mostrar los recuentos de píxeles
+
+        // Mostrar el tiempo de ejecución
+        const executionTimeElement = document.getElementById('executionTime');
+        executionTimeElement.textContent = `Processing Time: ${data.processing_time.toFixed(2)} s`;
+
+        // Mostrar los recuentos de píxeles
+        const pixelCountsContainer = document.getElementById('pixelCountsContainer');
+        pixelCountsContainer.innerHTML = '<h4>Pixel Counts:</h4>';
+        data.pixel_counts.forEach((count, index) => {
+            pixelCountsContainer.innerHTML += `<p>Lesion ${index + 1}: ${count} px</p>`;
+        });
+
+        // Mostrar las imágenes procesadas
+        overlayImage.src = '/static/' + data.overlay_path;
+        maskImage.src = '/static/' + data.mask_path;
+        pointsImage.src = '/static/' + data.bbox_path;
+
+        // Mostrar el enlace de descarga y las imágenes
+        downloadLink.href = `/static/${data.overlay_path.split('/').pop()}`;
+        downloadLink.style.display = "block";
+        overlayImage.style.display = "block";
+        maskImage.style.display = "block";
+        pointsImage.style.display = "block";
     })
     .catch(error => {
         spinner.style.display = 'none';
         console.error('Error:', error);
     });
 });
+
+
+
+// Funcionalidad para enviar la imagen para detección
+// form.addEventListener('submit', function(e) {
+//     e.preventDefault();
+
+//     // Mostrar el spinner
+//     spinner.style.display = 'block';
+
+//     const formData = new FormData(this);
+
+//     fetch('/detect_lesion', {
+//         method: 'POST',
+//         body: formData
+//     })
+//     .then(() => {
+//         // Iniciar la verificación de imágenes
+//         checkForImages(0);
+//     })
+//     .catch(error => {
+//         spinner.style.display = 'none';
+//         console.error('Error:', error);
+//     });
+// });
 
 
 // Función para verificar si hay imágenes en la carpeta 'static/detect_results'

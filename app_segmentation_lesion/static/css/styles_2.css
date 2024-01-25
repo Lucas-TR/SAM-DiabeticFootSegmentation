@@ -155,6 +155,24 @@ body, html {
     font-size: 18px; /* Tamaño de fuente más grande */
 }
 
+#resultsContainer {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+#resultsContainer h3, #resultsContainer h4 {
+    color: #333;
+}
+
+#resultsContainer p {
+    color: #666;
+    margin-left: 20px;
+}
+
+
   /* Animación de Carga */
 #spinner {
     display: none;
