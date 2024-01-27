@@ -33,8 +33,8 @@ from segment_anything import sam_model_registry, SamPredictor
 from tqdm import tqdm
 #sam_checkpoint = "sam_vit_h_4b8939.pth"
 #model_type = "vit_h"
-sam_checkpoint = "sam_vit_h_4b8939.pth"
-model_type = "vit_h"
+sam_checkpoint = "sam_model_best_200.pth"
+model_type = "vit_b"
 
 # Definir el dispositivo para la ejecución (GPU)
 device = "cuda"
@@ -51,7 +51,7 @@ display = utils.notebook_init()  # checks
 # Definición de los métodos de segmentación (1: RGB, 2: VGG, 3: RGB y VGG)
 method = 3
 # Nombre del experimento
-name_experiment = 'experiment_rgb_vgg_sam_l'
+name_experiment = 'experiment_final_fine_tunin'
 # Umbral de confianza para la detección con YOLOv5
 confiabilidad = 0.20
 

@@ -34,8 +34,9 @@ import sys
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
 from tqdm import tqdm
-sam_checkpoint = "sam_vit_h_4b8939.pth"
-model_type = "vit_h"
+sam_checkpoint = "sam_model_best_200.pth"
+model_type = "vit_b"
+
 
 device = "cuda"
 
@@ -79,15 +80,11 @@ names_imgs.sort()
 
 
 dic_model = {1: 'RGB', 2: 'VGG', 3: 'RGB_VGG'}
-ruta_carpeta = 'predicts_{}'.format(dic_model[method])
+ruta_carpeta = 'exp_final_fine_tunin_points{}'.format(dic_model[method])
 tool.create_new_file(ruta_carpeta)
 tool.create_new_file(crops)
 iou_total = []
 
-import cv2
-import matplotlib.pyplot as plt
-img = cv2.imread('obs2.jpg')
-plt.imshow(img)
 
 
 for i in tqdm(range(len(images)), desc="Processing images"):

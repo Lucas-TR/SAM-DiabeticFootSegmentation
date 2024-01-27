@@ -17,7 +17,7 @@ from matplotlib.colors import ListedColormap
 
 from scipy.io import savemat
 
-def calcular_metricas(ruta_etiquetas, ruta_predicciones, umbral=50):
+def calcular_metricas(ruta_etiquetas, ruta_predicciones, umbral=50, save_overlay = False):
     archivos_etiquetas = sorted(os.listdir(ruta_etiquetas))
     archivos_predicciones = sorted(os.listdir(ruta_predicciones))
 
@@ -37,19 +37,20 @@ def calcular_metricas(ruta_etiquetas, ruta_predicciones, umbral=50):
         interseccion = np.logical_and(etq_arr, pred_arr)
         union = np.logical_or(etq_arr, pred_arr)
         
-        # Crea una imagen de los resultados
-        resultado_img = np.zeros_like(etq_arr, dtype=np.uint8)
-        resultado_img = np.stack([resultado_img]*3, axis=-1)  # Convierte a RGB
-        resultado_img[interseccion] = [0, 255, 0]  # Verdaderos positivos en verde
-        resultado_img[np.logical_and(etq_arr, np.logical_not(pred_arr))] = [0, 0, 255]  # Falsos negativos en azul
-        resultado_img[np.logical_and(np.logical_not(etq_arr), pred_arr)] = [255, 0, 0]  # Falsos positivos en rojo
-        resultado_img[np.logical_and(np.logical_not(etq_arr), np.logical_not(pred_arr))] = [128, 128, 128]  # Verdaderos negativos en gris
-        resultado_img = Image.fromarray(resultado_img)
-        resultado_img.save(os.path.join(ruta_predicciones, f"resultado_{pred_archivo}"))
-        
-        # Guarda la imagen en formato .mat
-        savemat(os.path.join(ruta_predicciones, f"resultado_{pred_archivo}.mat"), {'resultado_img': np.array(resultado_img)})
-        
+        if save_overlay:
+            # Crea una imagen de los resultados
+            resultado_img = np.zeros_like(etq_arr, dtype=np.uint8)
+            resultado_img = np.stack([resultado_img]*3, axis=-1)  # Convierte a RGB
+            resultado_img[interseccion] = [0, 255, 0]  # Verdaderos positivos en verde
+            resultado_img[np.logical_and(etq_arr, np.logical_not(pred_arr))] = [0, 0, 255]  # Falsos negativos en azul
+            resultado_img[np.logical_and(np.logical_not(etq_arr), pred_arr)] = [255, 0, 0]  # Falsos positivos en rojo
+            resultado_img[np.logical_and(np.logical_not(etq_arr), np.logical_not(pred_arr))] = [128, 128, 128]  # Verdaderos negativos en gris
+            resultado_img = Image.fromarray(resultado_img)
+            resultado_img.save(os.path.join(ruta_predicciones, f"resultado_{pred_archivo}"))
+            
+            # Guarda la imagen en formato .mat
+            savemat(os.path.join(ruta_predicciones, f"resultado_{pred_archivo}.mat"), {'resultado_img': np.array(resultado_img)})
+            
         iou = np.sum(interseccion) / np.sum(union)
         dice = 2. * np.sum(interseccion) / (np.sum(etq_arr) + np.sum(pred_arr))
         accuracy = accuracy_score(etq_arr.flatten(), pred_arr.flatten())
@@ -125,21 +126,27 @@ def comparar_resultados(df1, df2):
 
 
 # Uso de la función:
-ruta_etiquetas = r'D:\PROYECTS\Monitoring_of_Wound\Final_System_bbox_points\masks'
-ruta_predicciones_bbox_points = r'D:\PROYECTS\Monitoring_of_Wound\Final_System_bbox_points\experiments\predicts_RGB_VGG'
+ruta_etiquetas = r'D:\PROYECTS\Monitoring_of_Wound\Final_System_BBox_Points\masks'
+ruta_predicciones_bbox = r'C:\Users\nicol\OneDrive\Escritorio\Github\SAM-DiabeticFootSegmentation\Final_System_BBox\exp_final_fine_tunin_bbox\masks'
+
+ruta_predicciones_bbox_points = r'C:\Users\nicol\OneDrive\Escritorio\Github\SAM-DiabeticFootSegmentation\Final_System_BBox_Points\predicts_RGB_VGG_experiment_final_fine_tunin\masks'
+
+ruta_predicciones_paper= r'D:\PROYECTS\Monitoring_of_Wound\Final_System_BBox_Points\experiments\predicts_RGB_VGG_paper'
+
+ruta_predicciones_points = r'C:\Users\nicol\OneDrive\Escritorio\Github\SAM-DiabeticFootSegmentation\Final_System_Points\exp_final_fine_tunin_pointsRGB_VGG\masks'
+
+df_resultados= calcular_metricas(ruta_etiquetas, ruta_predicciones_bbox)
 
 
-ruta_predicciones_sam = r'D:\Project_lesiones\Pruebas_SAM_paper\segment-anything-main\predictions_sam_paper'
+df_resultados2 = calcular_metricas(ruta_etiquetas, ruta_predicciones_paper)
 
+df_resultados3 = calcular_metricas(ruta_etiquetas, ruta_predicciones_bbox_points)
 
-df_resultados= calcular_metricas(ruta_etiquetas, ruta_predicciones_bbox_points)
-
-
-df_resultados2 = calcular_metricas(ruta_etiquetas, ruta_predicciones_sam)
+df_resultados4 = calcular_metricas(ruta_etiquetas, ruta_predicciones_points)
 
 
 
-df_top_iou = top_iou(df_resultados, top_n=83)
+df_top_iou = top_iou(df_resultados2, top_n=83)
 
 nombres_repetidos = df_top_iou['nombre_imagen'].unique()
 df_top_iou2 = df_resultados2[df_resultados2['nombre_imagen'].isin(nombres_repetidos)]

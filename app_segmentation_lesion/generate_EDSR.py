@@ -20,9 +20,10 @@ from skimage.util import img_as_float
 import tool
 
 
+    
 
 
-def SR_EDSR(PATH, images, labels = ''):
+def SR_EDSR(PATH, images,sr, labels = ''):
     if labels == '':
         both = False
     else:
@@ -48,11 +49,7 @@ def SR_EDSR(PATH, images, labels = ''):
     else:
         n_iter = len(imgs)
     
-    sr = cv2.dnn_superres.DnnSuperResImpl_create()
-    path = '{}/{}'.format(PATH,"EDSR_x4.pb")
-    sr.readModel(path)
-    sr.setModel("edsr",4)
-    
+
     
     
     if n_iter != 0 : #modificar
@@ -85,6 +82,15 @@ def SR_EDSR(PATH, images, labels = ''):
         print('succesfull')
     else:
         print('No se encontraron lesiones')
+
+
+def SR_EDSR_simplify(img, sr):
+    # Asumiendo que 'img' es una imagen cargada con cv2.imread o similar
+    result = sr.upsample(img)
+    result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+
+    return result
+
 
 '''
 path = "EDSR_x4.pb"

@@ -33,8 +33,8 @@ import sys
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
 from tqdm import tqdm
-sam_checkpoint = "sam_vit_h_4b8939.pth"
-model_type = "vit_h"
+sam_checkpoint = "sam_model_best_200.pth"
+model_type = "vit_b"
 
 device = "cuda"
 
@@ -77,11 +77,11 @@ names_imgs = os.listdir(ruta_images)
 names_imgs.sort()
 
 
-ruta_carpeta = 'predicts'
+ruta_carpeta = 'exp_final_fine_tunin_bbox'
 tool.create_new_file(ruta_carpeta)
 iou_total = []
 tool.create_new_file('{}/{}'.format(ruta_carpeta,'overlay'))
-tool.with_mark
+
 
 for i in tqdm(range(len(images)), desc="Processing images"):
     # ruta de la imagen original

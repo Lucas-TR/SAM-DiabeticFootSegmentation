@@ -63,6 +63,8 @@ def encoder(PATH):
   X = np.squeeze(X)
   return X
 
+
+
 def new_file(PATH,file,i):
           files = os.listdir(PATH)
           if file in files and i==0: 
@@ -138,26 +140,70 @@ def create_img(img, mask_ref, segments_slic, clas, path_out, wound, name_id, pre
         labels = ['mask SP', 'mask Manual', 'Edge SP', 'Edge Manual']
         save_img(images,labels,path_out,wound,name_id)
 
+  
+
+def create_masks_optimized(img, segments_slic):
+    num_segments = np.max(segments_slic) + 1
+    masks = np.zeros((num_segments,) + img.shape[:2], dtype="uint8")
+    for i in range(num_segments):
+        masks[i][segments_slic == i] = 255
+    # La lista de superPixels puede ser generada directamente usando np.where en un array tridimensional
+    superPixels = [np.where(segments_slic == i) for i in range(num_segments)]
+    return masks, superPixels
+
+def extract_features_optimized(img, channels, masks, positions_pxl, segments_slic):
+    var_ch_img = [None] * channels
+    me_ch_img = [None] * channels
     
-def create_masks(img,segments_slic):
-  superPixels = []; masks = []
-  for i in range(np.max(segments_slic)+1):
-    superPixels.append(np.where(segments_slic==i))
-    mask = np.zeros(img.shape, dtype="uint8")
-    mask[superPixels[i]] = 255
-    masks.append(mask[:,:,0])
-  return masks, superPixels
+    for ch in range(channels):
+        var_ch_img[ch], me_ch_img[ch] = feature_color(img, ch, masks, positions_pxl, segments_slic)
 
-#Extraer caracteristicas de color para una sola imagen
-def feature_color( img, ch, masks, sup_pxls, segments_slic): 
-  var_ch = []; me_ch = []
-  for i in range(np.max(segments_slic)+1):
-    img_ch = img[:,:,ch][sup_pxls[i]]
-    var_ch.append(np.var(img_ch))
-    me_ch.append(np.mean(img_ch))
+    return var_ch_img, me_ch_img
 
-  return var_ch, me_ch
+def create_df_optimized(var_ch_img, me_ch_img, names, x_c, y_c):
+    length = len(var_ch_img)
+    var_all = [None] * length
+    me_all = [None] * length
+    
+    for i in range(length):
+        var_all[i] = var_ch_img[i]
+        me_all[i] = me_ch_img[i]
 
+    return create_df_feature_color_optimized(var_all, me_all, names, x_c, y_c, bool_label=False)
+
+def create_df_feature_color_optimized(var_, med_, names, x_c_, y_c_, label='', bool_label=True):
+    # Inicialización del diccionario de datos
+    datos = {
+        'N_img': names,
+        'x_c': x_c_,
+        'y_c': y_c_
+    }
+
+    # Agregar datos de varianza y media para cada canal
+    datos.update({"var_ch_{}".format(i+1): var_[i] for i in range(len(var_))})
+    datos.update({"mean_ch_{}".format(i+1): med_[i] for i in range(len(med_))})
+
+    # Incluir la columna de etiquetas si es necesario
+    if bool_label:
+        datos["Wound"] = label
+
+    # Creación del DataFrame
+    df = pd.DataFrame(datos)
+    return df
+
+#   return var_ch, me_ch
+def feature_color(img, ch, masks, sup_pxls, segments_slic):
+    max_segments = np.max(segments_slic) + 1
+    var_ch = np.empty(max_segments)
+    me_ch = np.empty(max_segments)
+
+    img_ch = img[:,:,ch]
+    for i in range(max_segments):
+        img_ch_segment = img_ch[sup_pxls[i]]
+        var_ch[i] = np.var(img_ch_segment)
+        me_ch[i] = np.mean(img_ch_segment)
+
+    return var_ch, me_ch
 
 def detector(mask_ref, superPixels, segments_slic, mean_min):
   clas = [] # se guardara el número de superpixel que contiene lesión
@@ -976,7 +1022,7 @@ def segment_image(image,input_point,input_label,  input_box, predictor):
     Returns:
     masks: Máscara de segmentación resultante.
     """
-    predictor.set_image(image)
+    
 
     masks, _, _ = predictor.predict(
         point_coords=input_point,

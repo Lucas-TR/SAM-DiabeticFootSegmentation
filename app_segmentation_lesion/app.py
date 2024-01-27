@@ -11,6 +11,8 @@ import detect
 import generate_EDSR as gen_EDSR
 import tool_SVM
 import tool
+import generate_feature_map as gen_vgg16
+
 import time 
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamPredictor
@@ -33,6 +35,16 @@ os.makedirs(uploads_dir, exist_ok=True)
 @app.route("/")
 def index():
     return render_template('index.html')
+
+
+model_vgg16_layer_5 = gen_vgg16.load_vgg16_model()
+
+
+sr = cv2.dnn_superres.DnnSuperResImpl_create()
+path = 'EDSR_x4.pb' # 2, 3, 4
+sr.readModel(path)
+sr.setModel("edsr",4) # 2, 3, 4
+
 
 @app.route("/detect_lesion", methods=['POST'])
 def detect_lesion():
@@ -65,15 +77,31 @@ def detect_lesion():
     uploaded_file.save(filepath)
 
     # Procesamiento de la imagen con el nuevo código
-    method = 1  # 1: RGB, 2: VGG, 3: RGB and VGG, 4: unet
+    method = 3  # 1: RGB, 2: VGG, 3: RGB and VGG, 4: unet
     confiabilidad = 0.25
     Path = os.path.join('.', 'runs/train/exp/weights/best.pt')
     
     
     # Realizar detección con YOLOv5
+    start_yolo_time = time.time()
     bboxes = detect.run(weights=Path, conf_thres=confiabilidad, save_crop=False)
+    end_yolo_time = time.time()
+    total_yolo_time = end_yolo_time - start_yolo_time
     
-    img = cv2.imread(filepath)
+    # Inicializar acumuladores de tiempo para EDSR y SAM
+    total_edsr_time = 0
+    total_extraction_time = 0
+    total_sam_time = 0
+
+
+    img = cv2.cvtColor(cv2.imread(filepath), cv2.COLOR_BGR2RGB)
+
+    start_sam_time = time.time()
+    predictor.set_image(img)
+    end_sam_time = time.time()
+    total_sam_time += end_sam_time - start_sam_time
+
+
     h, w, _ = img.shape
     masks_pred = []
     
@@ -84,6 +112,9 @@ def detect_lesion():
 
     pixel_counts = []  # Lista para almacenar el recuento de píxeles por máscara
 
+
+
+    
     for bbox in bboxes:
         bbox = bbox[0]
         bbox = np.asarray(bbox, dtype=np.int32)
@@ -97,15 +128,20 @@ def detect_lesion():
         h_crop, w_crop, _ = recorte.shape
 
         # Aplicar EDSR solo si el recorte es menor de 512x512
-        if h_crop < 512 and w_crop < 512:
-            cv2.imwrite('crops/crop.jpg', recorte)
-            gen_EDSR.SR_EDSR('.', 'crops')
-            recorte_sr = cv2.imread('generate_images_sr_img/crop.jpg')
+        if h_crop < 200 and w_crop < 200:
+            #cv2.imwrite('crops/crop.jpg', recorte)
+            start_edsr_time = time.time()
+            recorte_sr = gen_EDSR.SR_EDSR_simplify(recorte, sr)
+            end_edsr_time = time.time()
+            total_edsr_time += end_edsr_time - start_edsr_time
+            
+            cv2.imwrite('generate_images_sr_img/crop.jpg', recorte_sr)
             h_crop_sr, w_crop_sr, _ = recorte_sr.shape
             fh = h_crop / h_crop_sr
             fw = w_crop / w_crop_sr
         else:
             recorte_sr = recorte
+            cv2.imwrite('generate_images_sr_img/crop.jpg', recorte_sr)
             fh = 1
             fw = 1
 
@@ -116,14 +152,21 @@ def detect_lesion():
         layer = 5
 
         if (method == 1 or method == 2 or method == 3):
-            input_point_all, input_label_all = tool_SVM.prediction_SVM_predict('.', ruta_carpeta, 'generate_images_sr_img', n_segment, compactness, sigma, threshold , layer, [uploaded_file.filename], method, predictor, uploaded_file.filename)
-        
+            start_extraction_time = time.time()
+            input_point_all, input_label_all = tool_SVM.prediction_SVM_predict('.', ruta_carpeta, 'generate_images_sr_img', n_segment, compactness, sigma, threshold , layer, [uploaded_file.filename], method, predictor, uploaded_file.filename, model_vgg16_layer_5)
+            end_extraction_time = time.time()
+            total_extraction_time += end_extraction_time - start_extraction_time
+
         #actualizacion de coordenadas
         for coord in input_point_all:
             coord[0] = x1 + coord[0]*fw
             coord[1] = y1 + coord[1]*fh
 
+        start_sam_time = time.time()
         mask_pred = tool.segment_image(img, input_point_all, input_label_all, bbox, predictor)
+        end_sam_time = time.time()
+        total_sam_time += end_sam_time - start_sam_time
+
         masks_pred.append(mask_pred)
 
         # Cuenta los píxeles con valor 1 y almacénalo
@@ -133,6 +176,10 @@ def detect_lesion():
         # Actualizar img_view_2 y img_bbox dentro del bucle
         img_view_2 = tool.show_points_on_image(img_view_2, input_point_all, input_label_all, complete=True)
 
+    print(f"Tiempo total de YOLOv5: {total_yolo_time} segundos")
+    print(f"Tiempo total de EDSR: {total_edsr_time} segundos")
+    print(f"Tiempo total de extracción de características: {total_extraction_time} segundos")
+    print(f"Tiempo total de SAM: {total_sam_time} segundos")
 
     img_bbox = tool.draw_bbox_with_numbered_labels(img_view_2, bboxes, color=(255, 0, 0))
 
@@ -142,9 +189,10 @@ def detect_lesion():
         mask_predict_final_gray = mask_predict_final.astype(np.uint8) * 255
         mask_predict_final = cv2.cvtColor(mask_predict_final_gray, cv2.COLOR_GRAY2RGB)
         img_overlay = tool.overlay_mask(img, mask_predict_final_gray)
-        cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'overlay', uploaded_file.filename), img_overlay)
-        cv2.imwrite('{}/{}/mask.jpg'.format(ruta_carpeta, 'marcas_images'), mask_predict_final_gray)
-        cv2.imwrite('{}/{}/bbox_points.jpg'.format(ruta_carpeta, 'images_bbox'),  img_bbox)
+        cv2.imwrite('{}/{}/{}'.format(ruta_carpeta, 'overlay', uploaded_file.filename), cv2.cvtColor(img_overlay, cv2.COLOR_RGB2BGR))
+        cv2.imwrite('{}/{}/mask_{}'.format(ruta_carpeta, 'marcas_images', uploaded_file.filename), mask_predict_final_gray)  # Asumiendo que esta es una imagen en escala de grises, no se necesita conversión
+        cv2.imwrite('{}/{}/bbox_points_{}'.format(ruta_carpeta, 'images_bbox', uploaded_file.filename), cv2.cvtColor(img_bbox, cv2.COLOR_RGB2BGR))
+
 
         
     # Mover imágenes procesadas al directorio 'static'
@@ -157,8 +205,8 @@ def detect_lesion():
             shutil.rmtree(file_path)
     
     shutil.move('{}/{}/{}'.format(ruta_carpeta, 'overlay', uploaded_file.filename), destination_folder)
-    shutil.move('{}/{}/{}'.format(ruta_carpeta, 'marcas_images','mask.jpg'), destination_folder)
-    shutil.move('{}/{}/{}'.format(ruta_carpeta, 'images_bbox', 'bbox_points.jpg'), destination_folder)
+    shutil.move('{}/{}/mask_{}'.format(ruta_carpeta, 'marcas_images',uploaded_file.filename), destination_folder)
+    shutil.move('{}/{}/bbox_points_{}'.format(ruta_carpeta, 'images_bbox', uploaded_file.filename), destination_folder)
 
     pixel_counts = [int(count) for count in pixel_counts]
     end_time = time.time()  # Tiempo de finalización
@@ -169,8 +217,8 @@ def detect_lesion():
             "pixel_counts": pixel_counts,
             "processing_time": processing_time,
             "overlay_path": os.path.join('detect_results', uploaded_file.filename),
-            "mask_path": os.path.join('detect_results', 'mask.jpg'),
-            "bbox_path": os.path.join('detect_results', 'bbox_points.jpg')
+            "mask_path": os.path.join('detect_results', 'mask_' + uploaded_file.filename),
+            "bbox_path": os.path.join('detect_results', 'bbox_points_'+uploaded_file.filename)
         })
 
 @app.route("/check_results")
@@ -182,8 +230,8 @@ def check_results():
     
     if image_files:
         overlay_path = os.path.join('detect_results', image_files[0])
-        mask_path = os.path.join('detect_results', 'mask.jpg')
-        bbox_path = os.path.join('detect_results', 'bbox_points.jpg')
+        mask_path = os.path.join('detect_results', 'mask_'+image_files[0])
+        bbox_path = os.path.join('detect_results', 'bbox_points_'+image_files[0])
         
         return jsonify({
             "has_images": True,

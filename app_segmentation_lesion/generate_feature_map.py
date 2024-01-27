@@ -16,14 +16,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 from skimage.transform import resize
+from keras.applications.vgg16 import VGG16
 
 
+def load_vgg16_model(layer=5):
+    model = VGG16()
+    model = Model(inputs=model.inputs, outputs=model.layers[layer].output)
+    return model
 
-def features_maps_VGG16(model, img,path,idn, layer):
-
+def features_maps_VGG16(model, img,idn, layer,path=''):
 
     # redefine model to output right after the first hidden layer
-    model = Model(inputs=model.inputs, outputs=model.layers[layer].output)
+    #model = Model(inputs=model.inputs, outputs=model.layers[layer].output)
     #model.summary()
     # load the image with the required shape
     
@@ -42,7 +46,7 @@ def features_maps_VGG16(model, img,path,idn, layer):
     feature_maps = model.predict(img)
     feature_maps = feature_maps[0, :, :, :]
     feature_maps = resize(feature_maps, (height, width,feature_maps.shape[2]))
-    pack_imgs_VGG16(feature_maps, path,idn)
+    #pack_imgs_VGG16(feature_maps, path,idn)
     
     return feature_maps
 

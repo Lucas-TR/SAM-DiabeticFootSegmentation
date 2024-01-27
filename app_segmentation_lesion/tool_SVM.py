@@ -679,7 +679,7 @@ def my_sample_points(model_RL, df, df_x_y_var_mean, k):
 
     return  data_positive[:k, :], data_negative[:2*k, :]
 
-def prediction_SVM_predict(path_out_origin, path_out, path_img,n_segment, compactness, sigma, threshold , layer, name_image, method,predictor, name_img):
+def prediction_SVM_predict(path_out_origin, path_out, path_img,n_segment, compactness, sigma, threshold , layer, name_image, method,predictor, name_img,model_vgg16_layer_5):
     
     if method == 1: 
         file_models = "model_SVM_RGB"
@@ -688,27 +688,29 @@ def prediction_SVM_predict(path_out_origin, path_out, path_img,n_segment, compac
     if method == 3: 
         file_models = 'model_SVM_RGB_VGG16'
         
-    file_visual_prediction = 'Vista'
+    #file_visual_prediction = 'Vista'
     PATH = '{}/{}'.format(path_out_origin,file_models)
     data_models = encoder_files(PATH)
     
-    Images = encoder(path_img)
+    # Images = encoder(path_img)
     
-    if len(Images.shape) == 3:
-       n_iter = 1
-    else:
-       n_iter = len(Images)
+    # if len(Images.shape) == 3:
+    #    n_iter = 1
+    # else:
+    #    n_iter = len(Images)
+    image_files = [file for file in os.listdir(path_img) if file.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    n_iter = len(image_files)
     
     file_per_image = True; file_iou_image = True
     PATH = path_out
     
     for i in range(n_iter):
         
-        if n_iter == 1:
-            img = Images
+        # if n_iter == 1:
+        #     img = Images
 
-        else:
-            img = Images[i]
+        # else:
+        #     img = Images[i]
             
         
         if method == 1: 
@@ -719,7 +721,8 @@ def prediction_SVM_predict(path_out_origin, path_out, path_img,n_segment, compac
             df = vector_slic_vgg16.feature_slic_prueba(name_experiment, n_segment, compactness, sigma, threshold , layer, path_img, PATH,file_per_image,file_iou_image)
         if method == 3: 
             name_experiment = "Results_RGB_VGG16"
-            df = vector_slic_rgb_vgg16.feature_slic_prueba(name_experiment, n_segment, compactness, sigma, threshold , layer, path_img, PATH,file_per_image,file_iou_image)
+            df = vector_slic_rgb_vgg16.feature_slic_prueba_opti( n_segment, compactness, sigma, layer, path_img, model_vgg16_layer_5)
+            #df = vector_slic_rgb_vgg16.feature_slic_prueba(name_experiment, n_segment, compactness, sigma, threshold , layer, path_img, PATH,file_per_image,file_iou_image)
     
         
         X  = separate_data_train(df, predict=True)
@@ -742,22 +745,23 @@ def prediction_SVM_predict(path_out_origin, path_out, path_img,n_segment, compac
         input_point_all = np.concatenate((selected_points, selected_points_n))
         input_label_all = np.concatenate((input_label, input_label_n))
         
+        #Esta parte es para ver como se crearon los superpixeles y que puntos se sleccionaron a una mejor escala
         
         # generate_segments_slic
-        segments_slic = slic(img, n_segment, compactness=compactness, sigma=sigma)
-        if segments_slic[0][0] != 0:
-            segments_slic = segments_slic - 1  # segments_slic has to start at 0
+        # segments_slic = slic(img, n_segment, compactness=compactness, sigma=sigma)
+        # if segments_slic[0][0] != 0:
+        #     segments_slic = segments_slic - 1  # segments_slic has to start at 0
         
-        edge_manual = mark_boundaries(img, segments_slic)
+        # edge_manual = mark_boundaries(img, segments_slic)
         
-        ruta_save_booundaries = '{}/{}/{}'.format(PATH, 'slic_boundaries', name_img)
-        plt.imshow(edge_manual)
-        plt.savefig(ruta_save_booundaries , dpi=600, bbox_inches='tight', transparent=True)
-        # Cerramos la figura
-        plt.close()
+        # ruta_save_booundaries = '{}/{}/{}'.format(PATH, 'slic_boundaries', name_img)
+        # plt.imshow(edge_manual)
+        # plt.savefig(ruta_save_booundaries , dpi=600, bbox_inches='tight', transparent=True)
+        # # Cerramos la figura
+        # plt.close()
         
-        ruta_save = '{}/{}/{}'.format(PATH, 'file_images_centroide_sample', name_img)
-        mark_centroide(ruta_save, edge_manual, input_point_all, input_label_all)
+        # ruta_save = '{}/{}/{}'.format(PATH, 'file_images_centroide_sample', name_img)
+        # mark_centroide(ruta_save, edge_manual, input_point_all, input_label_all)
         
         
         

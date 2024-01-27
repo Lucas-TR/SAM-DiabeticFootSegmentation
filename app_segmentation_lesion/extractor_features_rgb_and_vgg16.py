@@ -17,11 +17,11 @@ import shutil
 from scipy import stats
 from scipy import ndimage
 import random
-from keras.applications.vgg16 import VGG16
+
 import generate_feature_map as gen_vgg16
 
 import tool
-
+from keras.models import Model
 
 #Función para extraer  caracteristicas
 
@@ -30,10 +30,12 @@ import tool
 #n_segment = 150; threshold = 180
 #empty = [11,52,160] # mascaras vacias, se tienen que observar esas imágenes
 
-def feature_slic(name_experiment, n_segment , compactness, sigma, threshold , layer, path_img , path_mask, path_out, boolean, boolean_2,exp_all=False):
+
+
+def feature_slic(name_experiment, n_segment , compactness, sigma, threshold , layer, path_img , path_mask, path_out, boolean, boolean_2,model,exp_all=False):
   
   # load the model
-  model = VGG16()
+  #model = VGG16()
   
   if (isinstance(path_img, str) and isinstance(path_mask, str)):
       y_val = tool.encoder(path_img)
@@ -230,143 +232,194 @@ def feature_slic(name_experiment, n_segment , compactness, sigma, threshold , la
 
 
 
-def feature_slic_prueba(name_experiment, n_segment , compactness, sigma, threshold , layer, path_img, path_out, boolean, boolean_2,exp_all=False):
-  
-  # load the model
-  model = VGG16()
-  
-  if (isinstance(path_img, str)):
-      y_val = tool.encoder(path_img)
-  else:
-      y_val= path_img
 
-  file_data_per_image = 'vector_feature_per_image'
-  file_boundaries_rgb = 'Boundaries_rgb'
-  file_feature_all = 'vector_feature_all'
-  file_test_iou_per_image = 'Labels'
-  file_vgg16_image = 'Images_vgg16'
-  file_vgg16_slic_image = 'Images_vgg16_slic'
-  file_vgg16_slic_boundaries = 'Images_vgg16_slic_boundaries'
-  vector_feature_all = 'vector_feature_all'
-  df_rgb_vgg = [] 
+def feature_slic_prueba_opti( n_segment, compactness, sigma, layer, path_img, model_vgg16_layer_5):
+    #model = VGG16()
+    model = model_vgg16_layer_5
+    # Preparación de la imagen y carga de datos
+    y_val = tool.encoder(path_img) if isinstance(path_img, str) else path_img
+    n_iter = 1 if len(y_val.shape) == 3 else len(y_val)
+
+    # Preparación de nombres de archivos y variables
+    df_rgb, df_vgg = [], []
+
+    for i in range(n_iter):
+        img = y_val if n_iter == 1 else y_val[i]
+        segments_slic = slic(img, n_segment, compactness=compactness, sigma=sigma)
+        segments_slic = segments_slic - 1 if segments_slic[0][0] != 0 else segments_slic
+        masks, positions_pxl = tool.create_masks_optimized(img, segments_slic)
+        x, y = tool.centroide(masks, segments_slic)
+        channels = img.shape[2]
+        var_name = sorted(os.listdir(path_img))
+        name = [var_name[i]] * np.shape(x)[0]
+        name_id = name[0].split('.')
+
+        # Procesamiento para RGB
+        var_ch_img_rgb, me_ch_img_rgb = tool.extract_features_optimized(img, channels, masks, positions_pxl, segments_slic)
+
+        # Procesamiento para VGG
+        img_vgg = gen_vgg16.features_maps_VGG16(model, img, name_id[0], layer)
+        channels_vgg = img_vgg.shape[2]
+        var_ch_img_vgg, me_ch_img_vgg = tool.extract_features_optimized(img_vgg, channels_vgg, masks, positions_pxl, segments_slic)
+
+        # Agregar a listas
+        df_rgb.append(tool.create_df_optimized(var_ch_img_rgb, me_ch_img_rgb, name, x, y))
+        df_vgg.append(tool.create_df_optimized(var_ch_img_vgg, me_ch_img_vgg, name, x, y))
+
+    # Concatenación y guardado de datos
+    df_rgb = pd.concat(df_rgb, ignore_index=True)
+    df_vgg = pd.concat(df_vgg, ignore_index=True).drop(['N_img', 'x_c', 'y_c'], axis='columns')
+    df_complete = pd.concat([df_rgb, df_vgg], axis=1)
+
+    #save_data(df_complete, name_experiment, path_out, vector_feature_all, exp_all)
+       
+    return df_complete
+
+
+
+
+
+
+
+# def feature_slic_prueba(name_experiment, n_segment , compactness, sigma, threshold , layer, path_img, path_out, boolean, boolean_2,exp_all=False):
   
-  for k_rep in range(2):
-      if k_rep==0:
-          RGB = True
-          for_csv = []
-          for_csv.append(0)
-      else: RGB= False
+#   # load the model
+#   model = VGG16()
+  
+# #   if (isinstance(path_img, str)):
+# #       y_val = tool.encoder(path_img)
+# #   else:
+# #       y_val= path_img
+  
+#   y_val= path_img
+#   file_data_per_image = 'vector_feature_per_image'
+#   file_boundaries_rgb = 'Boundaries_rgb'
+#   file_feature_all = 'vector_feature_all'
+#   file_test_iou_per_image = 'Labels'
+#   file_vgg16_image = 'Images_vgg16'
+#   file_vgg16_slic_image = 'Images_vgg16_slic'
+#   file_vgg16_slic_boundaries = 'Images_vgg16_slic_boundaries'
+#   vector_feature_all = 'vector_feature_all'
+#   df_rgb_vgg = [] 
+  
+#   for k_rep in range(2):
+#       if k_rep==0:
+#           RGB = True
+#           for_csv = []
+#           for_csv.append(0)
+#       else: RGB= False
       
-      var_ch_img= []; me_ch_img=[]
-      label =[] ; names = [] ; X_c=[]; Y_c=[]; 
+#       var_ch_img= []; me_ch_img=[]
+#       label =[] ; names = [] ; X_c=[]; Y_c=[]; 
     
-      if len(y_val.shape) == 3:
-         n_iter = 1
-      else:
-         n_iter = len(y_val)
+#       if len(y_val.shape) == 3:
+#          n_iter = 1
+#       else:
+#          n_iter = len(y_val)
     
-      for i in range(n_iter):
-          #creating a file in which the results will be stored
-          tool.new_file(path_out ,name_experiment,i)
-      #  if not(i in empty):
-          if (n_iter==1):
-            img = y_val
+#       for i in range(n_iter):
+#           #creating a file in which the results will be stored
+#           tool.new_file(path_out ,name_experiment,i)
+#       #  if not(i in empty):
+#           if (n_iter==1):
+#             img = y_val
 
-            #channels = y_val.shape[2] #number of channels
-          else:
-            img = y_val[i]
+#             #channels = y_val.shape[2] #number of channels
+#           else:
+#             img = y_val[i]
               
-          segments_slic = slic(img, n_segment , compactness=compactness , sigma = sigma)
-          if segments_slic[0][0] != 0:
-              segments_slic = segments_slic - 1 #segments_slic has to start at 0
-          cont_pxl = tool.contador_pxls(segments_slic)
-          ###
-          if(k_rep==0):
-              for_csv.append(len(cont_pxl))
-          ###
-          masks, positions_pxl = tool.create_masks(img,segments_slic)
-          x, y = tool.centroide(masks, segments_slic)
-          img_rgb = img
-          channels = img.shape[2] #number of channels
-          #la imagen debe estar en formato RGB
-          name = []
+#           segments_slic = slic(img, n_segment , compactness=compactness , sigma = sigma)
+#           if segments_slic[0][0] != 0:
+#               segments_slic = segments_slic - 1 #segments_slic has to start at 0
+#           cont_pxl = tool.contador_pxls(segments_slic)
+#           ###
+#           if(k_rep==0):
+#               for_csv.append(len(cont_pxl))
+#           ###
+#           masks, positions_pxl = tool.create_masks(img,segments_slic)
+#           x, y = tool.centroide(masks, segments_slic)
+#           img_rgb = img
+#           channels = img.shape[2] #number of channels
+#           #la imagen debe estar en formato RGB
+#           name = []
           
-          for k in range(np.shape(x)[0]):
-                var_name = os.listdir(path_img) 
-                var_name.sort()
-                name.append(var_name[i])
-          name_id = name[0].split('.')
+#           for k in range(np.shape(x)[0]):
+#                 var_name = os.listdir(path_img) 
+#                 var_name.sort()
+#                 name.append(var_name[i])
+#           name_id = name[0].split('.')
           
-          if(not RGB):
-              tool.new_file(path_out ,'{}/{}'.format(name_experiment, file_vgg16_image),i)
+#           if(not RGB):
+#               tool.new_file(path_out ,'{}/{}'.format(name_experiment, file_vgg16_image),i)
               
-              img = gen_vgg16.features_maps_VGG16(model, img, '{}/{}/{}'.format(path_out,name_experiment, file_vgg16_image) , name_id[0], layer)
-              plt.close()
-              channels = img.shape[2] #number of channels
+#               img = gen_vgg16.features_maps_VGG16(model, img, '{}/{}/{}'.format(path_out,name_experiment, file_vgg16_image) , name_id[0], layer)
+#               plt.close()
+#               channels = img.shape[2] #number of channels
           
-          for ch in range(channels):
-              var_ch_sp, me_ch_sp = tool.feature_color(img, ch,masks,positions_pxl, segments_slic) #channel red
-              var_ch_img.append(var_ch_sp) ; me_ch_img.append(me_ch_sp)
+#           for ch in range(channels):
+#               #optimizado
+#               var_ch_sp, me_ch_sp = tool.feature_color(img, ch,masks,positions_pxl, segments_slic) #channel red
+#               var_ch_img.append(var_ch_sp) ; me_ch_img.append(me_ch_sp)
           
         
                           
-          #if (n_iter==1):
-           # tool.create_img(img_rgb, mask_ref, segments_slic, clas,path_out,wound,name_id[0])
+#           #if (n_iter==1):
+#            # tool.create_img(img_rgb, mask_ref, segments_slic, clas,path_out,wound,name_id[0])
             
-          names.append(name) ; X_c.append(x); Y_c.append(y) 
+#           names.append(name) ; X_c.append(x); Y_c.append(y) 
       
-      #create data frame
-      var_all =[]; me_all =[]
-      for i in range(channels):
-          var_imgs =[]; me_imgs =[]; as_imgs = [] ; f_imgs = [] ; i_imgs = []
-          for j in range(n_iter):
-              var_imgs.append(var_ch_img[i+channels*j])
-              me_imgs.append(me_ch_img[i+channels*j])
+#       #create data frame
+#       var_all =[]; me_all =[]
+#       for i in range(channels):
+#           var_imgs =[]; me_imgs =[] #; as_imgs = [] ; f_imgs = [] ; i_imgs = []
+#           for j in range(n_iter):
+#               var_imgs.append(var_ch_img[i+channels*j])
+#               me_imgs.append(me_ch_img[i+channels*j])
 
             
-          var_all.append(tool.flatten(var_imgs)) ; me_all.append(tool.flatten(me_imgs))
+#           var_all.append(tool.flatten(var_imgs)) ; me_all.append(tool.flatten(me_imgs))
     
     
-      names = tool.flatten(names);  x_c = tool.flatten(X_c); y_c = tool.flatten(Y_c) 
+#       names = tool.flatten(names);  x_c = tool.flatten(X_c); y_c = tool.flatten(Y_c) 
     
     
-      df = tool.create_df_feature_color(var_all,me_all,names, x_c,y_c, bool_label=False)
-      df_rgb_vgg.append(df)
-  df_rgb = df_rgb_vgg[0]
-  df_vgg = df_rgb_vgg[1]
-  df_vgg = df_vgg.drop(['N_img','x_c','y_c'], axis='columns')
-  df_complete = pd.concat([df_rgb, df_vgg],axis=1)
-  tool.new_file(path_out ,'{}/{}'.format(name_experiment,vector_feature_all),0)
-  PATH = path_out
-  df_complete.to_csv("{}/{}/{}/{}_feature_vector_RGB-VGG.csv".format(PATH,name_experiment,vector_feature_all,name_experiment))
-  df_complete.to_excel("{}/{}/{}/{}_feature_vector_RGB-VGG.xlsx".format(PATH,name_experiment,vector_feature_all,name_experiment))
-  if exp_all:
-      df_complete.to_csv("{}/{}/{}_feature_vector_RGB-VGG.csv".format(PATH,'Data_training',name_experiment))
+#       df = tool.create_df_feature_color(var_all,me_all,names, x_c,y_c, bool_label=False)
+#       df_rgb_vgg.append(df)
+#   df_rgb = df_rgb_vgg[0]
+#   df_vgg = df_rgb_vgg[1]
+#   df_vgg = df_vgg.drop(['N_img','x_c','y_c'], axis='columns')
+#   df_complete = pd.concat([df_rgb, df_vgg],axis=1)
+#   tool.new_file(path_out ,'{}/{}'.format(name_experiment,vector_feature_all),0)
+#   PATH = path_out
+#   df_complete.to_csv("{}/{}/{}/{}_feature_vector_RGB-VGG.csv".format(PATH,name_experiment,vector_feature_all,name_experiment))
+#   df_complete.to_excel("{}/{}/{}/{}_feature_vector_RGB-VGG.xlsx".format(PATH,name_experiment,vector_feature_all,name_experiment))
+#   if exp_all:
+#       df_complete.to_csv("{}/{}/{}_feature_vector_RGB-VGG.csv".format(PATH,'Data_training',name_experiment))
   
-  '''
-  <----Create dataframe per image ---->
-  '''
+#   '''
+#   <----Create dataframe per image ---->
+#   '''
   
-  tool.new_file(path_out ,'{}/{}'.format(name_experiment,file_data_per_image),0)
-  PATH = path_out
-  lim_in = for_csv[0]
-  lim_sup = for_csv[0]
-  for lim in range(len(for_csv)-1):
-      lim_in = lim_in + for_csv[lim]
-      lim_sup = lim_sup + for_csv[lim+1]
-      df_aux = df.iloc[lim_in:lim_sup,:]  
-      df_aux.to_csv("{}/{}/{}/{}_{}_RGB-VGG.csv".format(PATH,name_experiment,file_data_per_image,name_experiment,df_aux['N_img'][lim_in]))
+#   tool.new_file(path_out ,'{}/{}'.format(name_experiment,file_data_per_image),0)
+#   PATH = path_out
+#   lim_in = for_csv[0]
+#   lim_sup = for_csv[0]
+#   for lim in range(len(for_csv)-1):
+#       lim_in = lim_in + for_csv[lim]
+#       lim_sup = lim_sup + for_csv[lim+1]
+#       df_aux = df.iloc[lim_in:lim_sup,:]  
+#       df_aux.to_csv("{}/{}/{}/{}_{}_RGB-VGG.csv".format(PATH,name_experiment,file_data_per_image,name_experiment,df_aux['N_img'][lim_in]))
   
-  '''
-  <---- End --->
-  '''
-  name = 'README.txt'
-  README = '{}/{}/{}'.format(PATH,name_experiment,name)
-  names = ['Name Experiment','Numbers of channels', 'Images','Deep_layer','n_segment','compactness', 'sigma', 'threshold', 'file_per_image', 'file_iou_image']
-  inputs = [name_experiment, channels,n_iter, layer,n_segment , compactness, sigma, threshold, boolean, boolean_2]
-  with open (README, 'w') as f:
-    f.write('Experiment performed using RGB and VGG\n \n INPUTS \n\n')
-    for idx in range(len(inputs)):
-        f.write('{} : {} \n'.format(names[idx],str(inputs[idx])))
-  print("Finish...!")
-  return df_complete
+#   '''
+#   <---- End --->
+#   '''
+#   name = 'README.txt'
+#   README = '{}/{}/{}'.format(PATH,name_experiment,name)
+#   names = ['Name Experiment','Numbers of channels', 'Images','Deep_layer','n_segment','compactness', 'sigma', 'threshold', 'file_per_image', 'file_iou_image']
+#   inputs = [name_experiment, channels,n_iter, layer,n_segment , compactness, sigma, threshold, boolean, boolean_2]
+#   with open (README, 'w') as f:
+#     f.write('Experiment performed using RGB and VGG\n \n INPUTS \n\n')
+#     for idx in range(len(inputs)):
+#         f.write('{} : {} \n'.format(names[idx],str(inputs[idx])))
+#   print("Finish...!")
+#   return df_complete
